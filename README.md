@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-# Framework Planner+ILC
+# Framework PlannerSIG+ILC
 
 Il framework Planner+ILC proposto opera secondo i seguenti passaggi:
 
