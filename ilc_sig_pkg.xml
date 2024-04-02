@@ -1,0 +1,9 @@
+<library path="ilc_sig_pkg">
+  <class name="pi3hat_ilc_sig_controller/Pi3Hat_Ilc_Sig_Controller" 
+    type="pi3hat_ilc_sig_controller::Pi3Hat_Ilc_Sig_Controller"
+    base_class_type="controller_interface::ControllerInterface">
+      <description>
+      Pi3Hat Ilc controller
+      </description>
+  </class>
+</library>

@@ -1,0 +1,48 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 1000  
+
+  ilc_sig_controller:
+    type: pi3hat_ilc_sig_controller/Pi3Hat_Ilc_Sig_Controller
+  state_broadcaster:
+     type: pi3hat_state_broadcaster/Pi3Hat_State_Broadcaster # stampa roba su topic 
+
+ilc_sig_controller:
+   ros__parameters:
+      period: 0.001
+      file_homing: "/home/vince/Documents/cp/Mulinex/locosim_ws/src/ilc_sig_pkg/csv_task/init.csv"
+      file_name: "/home/vince/Documents/cp/Mulinex/locosim_ws/src/ilc_sig_pkg/csv_task/task.csv"
+      T_init: 3.0 # time duration of the homing phase   
+      T_init_rest: 5.0 # rest time after homing and before task     
+      T_task: 1.0
+      T_rest: 0.1
+      Task_rep: 30
+      ILC_kp: 0.5
+      ILC_kd: 0.075
+      KI: 7.5
+      topic_name: "PD_control/command"
+      use_sim_time: False
+      joint:
+      - "LF_HFE"
+      - "LF_KFE"
+      - "LH_HFE"
+      - "LH_KFE"
+      - "RF_HFE"
+      - "RF_KFE"
+      - "RH_HFE"
+      - "RH_KFE"
+    
+state_broadcaster:
+  ros__parameters:
+    joints:
+      - "LF_HFE"
+      - "LF_KFE"
+      - "LH_HFE"
+      - "LH_KFE"
+      - "RF_HFE"
+      - "RF_KFE"
+      - "RH_HFE"
+      - "RH_KFE"
+
+    
+    performance_index: true

@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/vince/Documents/cp/Mulinex/locosim_ws/install/rbt_pd_cnt/include/**",
+        "/home/vince/Documents/cp/Mulinex/locosim_ws/install/pi3hat_moteus_int_msgs/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/vince/Documents/cp/Mulinex/locosim_ws/src/ilc_sig_pkg/include/**",
+        "/home/vince/Documents/cp/Mulinex/locosim_ws/src/rbt_pd_cnt/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
