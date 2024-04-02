@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Framework Planner+ILC
 
 Il framework Planner+ILC proposto opera secondo i seguenti passaggi:
@@ -13,3 +14,6 @@ Il framework Planner+ILC proposto opera secondo i seguenti passaggi:
 3. I file `task.csv` e `init.csv` devono essere copiati nella cartella `/csv_task` del pacchetto `ilc_sig_controller` (o un percorso analogo), sostituendo eventuali file presenti con gli stessi nomi. Il controllore caricherà i dati direttamente da questo percorso.
 
 **IMPORTANTE**: È necessario configurare sempre il parametro `period` nel file YAML del control manager. Questo parametro deve essere uguale al periodo di campionamento sia della traiettoria che del controllore.
+=======
+# Ilc_sig_ROS2_controller
+>>>>>>> 9f39bb541d08d98b65ab1fc5f5067e6663b59d75
