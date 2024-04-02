@@ -30,6 +30,7 @@ namespace pi3hat_ilc_sig_controller
                 auto_declare<std::string>("file_name","");
                 auto_declare<std::string>("topic_name","");
                 auto_declare<double>("T_init", 3.0);
+                auto_declare<double>("T_init_rest", 5.0);
                 auto_declare<double>("T_task", 1.0);
                 auto_declare<double>("T_rest", 1.0);
                 auto_declare<double>("ILC_kp_", 0.05);
@@ -82,11 +83,10 @@ namespace pi3hat_ilc_sig_controller
         file_name_ = get_node()->get_parameter("file_name").as_string();
         file_homing_ = get_node()->get_parameter("file_homing").as_string();
         topic_name = get_node()->get_parameter("topic_name").as_string();
-        // N_ = get_node() -> get_parameter("N").as_int();
-        // N_homing_ = get_node() -> get_parameter("N_homing").as_int();
         Task_rep_ = get_node() -> get_parameter("Task_rep").as_int();
         T_task_ = get_node()->get_parameter("T_task").as_double();
         T_homing_ = get_node()->get_parameter("T_init").as_double();
+        T_homing_rest_ = get_node()->get_parameter("T_init_rest").as_double();
         T_rest_ = get_node()->get_parameter("T_rest").as_double();
         ILC_kp_ = get_node()->get_parameter("ILC_kp").as_double();
         ILC_kd_ = get_node()->get_parameter("ILC_kd").as_double();
@@ -127,45 +127,12 @@ namespace pi3hat_ilc_sig_controller
         else
             init_positions.resize(joint_.size(),0.0);
         
-        // // fill the map structure 
-        // sz = joint.size();
-        // for(size_t i = 0; i < sz; i++)
-        // {
-        //     position_cmd_.emplace(std::make_pair(joint[i],init_positions[i]));
-        //     velocity_cmd_.emplace(std::make_pair(joint[i],0.0));
-        //     effort_cmd_.emplace(std::make_pair(joint[i],0.0));
-
-        // }
-        // for(size_t i = 0; i < sz; i++)
-        // {
-        //     position_stt_.emplace(std::make_pair(joint[i],init_positions[i]));
-        //     velocity_stt_.emplace(std::make_pair(joint[i],0.0));
-        //     effort_stt_.emplace(std::make_pair(joint[i],0.0));
-        // }
-
-        // build the subscriber
-        
-        // cmd_sub_ = get_node()->create_subscription<CmdMsgs>(
-        //     "~/command",
-        //     5,
-        //     [this](const CmdMsgs::SharedPtr msg)
-        //     {
-        //         // rt_buffer_.writeFromNonRT(msg);
-        //         joints_rcvd_msg_->set__name(msg->name);
-        //         joints_rcvd_msg_->set__position(msg->position);
-        //         joints_rcvd_msg_->set__velocity(msg->velocity);
-        //         joints_rcvd_msg_->set__effort(msg->effort);
-        //         joints_rcvd_msg_->set__kp_scale(msg->kp_scale);
-        //         joints_rcvd_msg_->set__kd_scale(msg->kd_scale);
-        //     }
-        // );
-        // RCLCPP_INFO(get_node()->get_logger(),"configure succesfully");
-        // return CallbackReturn::SUCCESS;
 
         // Assuming to resampling always at 1kHz
         N_ = (int) (T_task_/period_);
         N_homing_ = (int) (T_homing_/period_);
         N_rest_ = (int) (T_rest_/period_);
+        N_homing_rest_ = (int) (T_homing_rest_/period_);
         
         if(N_ <= 0  || period_ <= 0) 
         {
@@ -389,8 +356,13 @@ namespace pi3hat_ilc_sig_controller
           case Controller_State::HOMING:
               if(index_ < N_homing_){
                 execute_homing(index_, jnt_pos, jnt_vel, jnt_tor);
-                integrative_err_update(take_off_pos_, jnt_pos, d_s);
-                integrative_term_torque_update(jnt_err_, jnt_tor);
+                // integrative_err_update(take_off_pos_, jnt_pos, d_s);
+                // integrative_term_torque_update(jnt_err_, jnt_tor);
+              }
+              else if (index_ < N_homing_ + N_homing_rest_){
+                reference_extraction(0, jnt_pos, jnt_vel, jnt_tor);
+                // integrative_err_update(take_off_pos_, jnt_pos, d_s);
+                // integrative_term_torque_update(jnt_err_, jnt_tor);
               }
               else{
                 index_ = 0;
@@ -401,25 +373,25 @@ namespace pi3hat_ilc_sig_controller
               break;
           case Controller_State::ACTIVE:
               if(index_  < (int) (Task_rep_ * (N_ + N_rest_))){
-                if(index_rep_ >= N_ + N_rest_ || index_rep_ == 0) {
+                if(index_rep_ >= N_ + N_rest_ || index_rep_ == 0) {          // first iteration
                   index_rep_ = 0;
                   // ILC_FF_torque_update(index_rep_, take_off_pos_, take_off_vel_);
                   reference_extraction(index_rep_, jnt_pos, jnt_vel, jnt_tor);
-                  integrative_err_update(take_off_pos_, jnt_pos, d_s);
-                  integrative_term_torque_update(jnt_err_, jnt_tor);
+                  // integrative_err_update(take_off_pos_, jnt_pos, d_s);
+                  // integrative_term_torque_update(jnt_err_, jnt_tor);
                   index_rep_ += 1;
                   }
-                else if (index_rep_ >= N_)
+                else if (index_rep_ >= N_)   // rest phase
                 {
                   // ILC_FF_torque_update(0, take_off_pos_, take_off_vel_);
                   reference_extraction(0, jnt_pos, jnt_vel, jnt_tor);
-                  integrative_err_update(take_off_pos_, jnt_pos, d_s);
-                  integrative_term_torque_update(jnt_err_, jnt_tor);
+                  // integrative_err_update(take_off_pos_, jnt_pos, d_s);
+                  // integrative_term_torque_update(jnt_err_, jnt_tor);
                   index_rep_ += 1;
                 }
-                else {
-                  jnt_err_.resize(JNT_NUM, 0.0);
-                  ILC_FF_torque_update(index_rep_ - 1, take_off_pos_, take_off_vel_); // If this line cumment the ilc_update in the if
+                else {                     // task execution
+                  jnt_err_.resize(JNT_NUM, 0.0);         
+                  // ILC_FF_torque_update(index_rep_ - 1, take_off_pos_, take_off_vel_); // If this line cumment the ilc_update in the if
                   reference_extraction(index_rep_, jnt_pos, jnt_vel, jnt_tor);
                   index_rep_ += 1;                  
                 }
@@ -511,20 +483,22 @@ namespace pi3hat_ilc_sig_controller
           if (std::isnan(jnt_tor[j]))
           {
             command_interfaces_[5*j+2].set_value(0);
+            RCLCPP_INFO(get_node()->get_logger(),"SHIT AT j = %d",j);
+            RCLCPP_INFO(get_node()->get_logger(),"EFF = %f",jnt_tor[j]);
           }
           else
           {
             command_interfaces_[5*j+2].set_value(jnt_tor[j]);
           }
-          command_interfaces_[5*j+3].set_value(1.0);          
-          command_interfaces_[5*j+4].set_value(1.0);  
-          if (jnt_pos[j] || jnt_vel[j] || jnt_tor[j])
-          {
-            RCLCPP_INFO(get_node()->get_logger(),"SHIT AT j = %d",j);
-            RCLCPP_INFO(get_node()->get_logger(),"POS = %f",jnt_pos[j]);
-            RCLCPP_INFO(get_node()->get_logger(),"VEL = %f",jnt_vel[j]);
-            RCLCPP_INFO(get_node()->get_logger(),"EFF = %f",jnt_tor[j]);
-          }
+          command_interfaces_[5*j+3].set_value(1.0);   // Kp_scale       
+          command_interfaces_[5*j+4].set_value(1.0);   // kd_scale
+          // if (jnt_pos[j] || jnt_vel[j] || jnt_tor[j])
+          // {
+          //   RCLCPP_INFO(get_node()->get_logger(),"SHIT AT j = %d",j);
+          //   RCLCPP_INFO(get_node()->get_logger(),"POS = %f",jnt_pos[j]);
+          //   RCLCPP_INFO(get_node()->get_logger(),"VEL = %f",jnt_vel[j]);
+          //   RCLCPP_INFO(get_node()->get_logger(),"EFF = %f",jnt_tor[j]);
+          // }
             
         }
         

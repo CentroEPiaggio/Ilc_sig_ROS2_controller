@@ -98,9 +98,9 @@ namespace pi3hat_ilc_sig_controller
                 double period_; // [milliseconds]
                 std::ifstream fin_;
                 std::ifstream fhom_;
-                int N_, N_homing_, N_rest_;
+                int N_, N_homing_, N_rest_, N_homing_rest_;
                 int Task_rep_;
-                double T_task_, T_homing_, T_rest_;
+                double T_task_, T_homing_, T_rest_, T_homing_rest_;
                 double ILC_kp_, ILC_kd_;
                 double Ki;
                 std::vector<double> q_homing_vect_;  // Homing states+controls vector
