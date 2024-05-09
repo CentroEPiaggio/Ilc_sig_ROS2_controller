@@ -143,7 +143,6 @@ namespace pi3hat_ilc_sig_controller
             return CallbackReturn::ERROR;
         }
 
-
         act_out_.position.resize(JNT_NUM);
         act_out_.velocity.resize(JNT_NUM);
         act_out_.effort.resize(JNT_NUM);
@@ -161,28 +160,11 @@ namespace pi3hat_ilc_sig_controller
         take_off_eff_.resize(JNT_NUM);
 
         jnt_err_.resize(JNT_NUM, 0.0);   //integrative error 
-
-        // RCLCPP_ERROR(
-        //         get_node()->get_logger(),
-        //         "%d", JNT_NUM*2*(int)(T_task_/period_)
-        //     );
-        //opt_per = T_task_ / N_;
         
-
         pub_ = get_node() -> create_publisher<sensor_msgs::msg::JointState>(
             topic_name,
             rclcpp::QoS(10)
         );
-
-        // // Define the writer variables
-        // writer_ref_ = std::make_unique<rosbag2_cpp::Writer>();
-        // writer_mis_ = std::make_unique<rosbag2_cpp::Writer>();
-        // // Open the bag to start writing
-        // writer_ref_ -> open("rosbags/joint_ref_bag");
-        // writer_mis_ -> open("rosbags/joint_mis_bag");
-        // // Create the synthetic topics to be written
-        // writer_ref_ -> create_topic({"planner/joint_ref_bag", "sensor_msgs/msg/JointState", rmw_get_serialization_format(), ""});
-        // writer_mis_ -> create_topic({"planner/joint_mis_bag", "sensor_msgs/msg/JointState", rmw_get_serialization_format(), ""});
 
         index_ = 0;
         index_rep_ = 0;
@@ -349,8 +331,6 @@ namespace pi3hat_ilc_sig_controller
           // RCLCPP_INFO(get_node()->get_logger(),"Eff is %f", take_off_eff_[j]);
         }
 
-        
-
         switch (state_)
           {
           case Controller_State::HOMING:
@@ -375,15 +355,11 @@ namespace pi3hat_ilc_sig_controller
               if(index_  < (int) (Task_rep_ * (N_ + N_rest_))){
                 if(index_rep_ >= N_ + N_rest_ || index_rep_ == 0) {          // first iteration
                   index_rep_ = 0;
-                  // ILC_FF_torque_update(index_rep_, take_off_pos_, take_off_vel_);
                   reference_extraction(index_rep_, jnt_pos, jnt_vel, jnt_tor);
-                  // integrative_err_update(take_off_pos_, jnt_pos, d_s);
-                  // integrative_term_torque_update(jnt_err_, jnt_tor);
                   index_rep_ += 1;
                   }
                 else if (index_rep_ >= N_)   // rest phase
                 {
-                  // ILC_FF_torque_update(0, take_off_pos_, take_off_vel_);
                   reference_extraction(0, jnt_pos, jnt_vel, jnt_tor);
                   // integrative_err_update(take_off_pos_, jnt_pos, d_s);
                   // integrative_term_torque_update(jnt_err_, jnt_tor);
@@ -391,7 +367,7 @@ namespace pi3hat_ilc_sig_controller
                 }
                 else {                     // task execution
                   jnt_err_.resize(JNT_NUM, 0.0);         
-                  ILC_FF_torque_update(index_rep_ - 1, take_off_pos_, take_off_vel_); // If this line cumment the ilc_update in the if
+                  ILC_FF_torque_update(index_rep_ - 1, take_off_pos_, take_off_vel_);     //compute ILC feedforward torque
                   reference_extraction(index_rep_, jnt_pos, jnt_vel, jnt_tor);
                   index_rep_ += 1;                  
                 }
@@ -414,32 +390,20 @@ namespace pi3hat_ilc_sig_controller
 
         for(uint j = 0;j<JNT_NUM;j++)
         { 
-          // RCLCPP_INFO(get_node()->get_logger(),"j value is %d",j);
-          command_interfaces_[5*j].set_value(jnt_pos[j]);            //Tira fuori le posizioni dei giunti
-          // command_interfaces_[5*j].set_value(0.0);
-          command_interfaces_[5*j+1].set_value(jnt_vel[j]);          //Tira fuori le velocità dei giunti
-          // command_interfaces_[5*j+1].set_value(0.0);          //Tira fuori le velocità dei giunti
+          command_interfaces_[5*j].set_value(jnt_pos[j]);            // set the joint positions
+          command_interfaces_[5*j+1].set_value(jnt_vel[j]);          // set the joint velocities
           if (std::isnan(jnt_tor[j]))
           {
-            command_interfaces_[5*j+2].set_value(0);
+            command_interfaces_[5*j+2].set_value(0);                 // if the feedforward torques computed are nan, set to zero
           }
           else
           {
-            command_interfaces_[5*j+2].set_value(jnt_tor[j]);
+            command_interfaces_[5*j+2].set_value(jnt_tor[j]);        // set the joint feedforward torques
           }
-          command_interfaces_[5*j+3].set_value(1.0);          
-          command_interfaces_[5*j+4].set_value(1.0);
-          // if ( jnt_pos[j] || jnt_vel[j] || jnt_tor[j])
-          // {
-          //   RCLCPP_INFO(get_node()->get_logger(),"SHIT AT j = %d",j);
-          //   RCLCPP_INFO(get_node()->get_logger(),"POS = %f",jnt_pos[j]);
-          //   RCLCPP_INFO(get_node()->get_logger(),"VEL = %f",jnt_vel[j]);
-          //   RCLCPP_INFO(get_node()->get_logger(),"EFF = %f",jnt_tor[j]);
-          // }          
+          command_interfaces_[5*j+3].set_value(1.0);   // Kp_scale       
+          command_interfaces_[5*j+4].set_value(1.0);   // kd_scale   
         }
 
-
-        // RCLCPP_INFO(get_node()->get_logger(), "Jnt pos val: %f", jnt_pos[7]);
 
         //Stream command data on topics
         act_out_.set__position(jnt_pos);
@@ -460,47 +424,29 @@ namespace pi3hat_ilc_sig_controller
         joint_mis_.set__velocity(take_off_vel_);
         joint_mis_.set__effort(take_off_eff_);
         joint_mis_.header.set__stamp(time);
-          
-
-        // Write data inside the bags
-        // writer_ref_ -> write(joint_ref_, "planner/joint_ref_bag", time);
-        // writer_mis_ -> write(joint_mis_, "planner/joint_mis_bag", time);
 
         index_ += 1;
 
         return controller_interface::return_type::OK;
       }
       else{
-        std::vector<double> final_pose(STATES_NUM);
 
         reference_extraction(0, jnt_pos, jnt_vel, jnt_tor);
         for(uint j = 0;j<JNT_NUM;j++)
         { 
-          // RCLCPP_INFO(get_node()->get_logger(),"j value is %d",j);
-          command_interfaces_[5*j].set_value(jnt_pos[j]);            //Tira fuori le posizioni dei giunti
-          // command_interfaces_[5*j].set_value(0.0);
-          command_interfaces_[5*j+1].set_value(jnt_vel[j]);          //Tira fuori le velocità dei giunti
-          // command_interfaces_[5*j+1].set_value(0.0);          //Tira fuori le velocità dei giunti
+
+          command_interfaces_[5*j].set_value(jnt_pos[j]);            // set the joint positions
+          command_interfaces_[5*j+1].set_value(jnt_vel[j]);          // set the joint velocities
           if (std::isnan(jnt_tor[j]))
           {
-            command_interfaces_[5*j+2].set_value(0);
-            // RCLCPP_INFO(get_node()->get_logger(),"SHIT AT j = %d",j);
-            // RCLCPP_INFO(get_node()->get_logger(),"EFF = %f",jnt_tor[j]);
+            command_interfaces_[5*j+2].set_value(0);                 // if the feedforward torques computed are nan, set to zero
           }
           else
           {
-            command_interfaces_[5*j+2].set_value(jnt_tor[j]);
+            command_interfaces_[5*j+2].set_value(jnt_tor[j]);        // set the joint feedforward torques
           }
           command_interfaces_[5*j+3].set_value(1.0);   // Kp_scale       
-          command_interfaces_[5*j+4].set_value(1.0);   // kd_scale
-          // if (jnt_pos[j] || jnt_vel[j] || jnt_tor[j])
-          // {
-          //   RCLCPP_INFO(get_node()->get_logger(),"SHIT AT j = %d",j);
-          //   RCLCPP_INFO(get_node()->get_logger(),"POS = %f",jnt_pos[j]);
-          //   RCLCPP_INFO(get_node()->get_logger(),"VEL = %f",jnt_vel[j]);
-          //   RCLCPP_INFO(get_node()->get_logger(),"EFF = %f",jnt_tor[j]);
-          // }
-            
+          command_interfaces_[5*j+4].set_value(1.0);   // kd_scale   
         }
         
         //Stream command data on topics
@@ -526,8 +472,6 @@ namespace pi3hat_ilc_sig_controller
             state_interface_config.names.push_back(joint_[i] + "/" + hardware_interface::HW_IF_POSITION);
             state_interface_config.names.push_back(joint_[i] + "/" + hardware_interface::HW_IF_VELOCITY);
             state_interface_config.names.push_back(joint_[i] + "/" + hardware_interface::HW_IF_EFFORT);
-            // std::string mystring = joint_[i] + "/" + hardware_interface::HW_IF_POSITION;
-            // RCLCPP_INFO(get_node()->get_logger(),"Setting %s", mystring.c_str());
         }
         RCLCPP_INFO(get_node()->get_logger(),"CONFIGURE STATE INTERFACES OK");
 
@@ -545,9 +489,7 @@ namespace pi3hat_ilc_sig_controller
             command_interface_config.names.push_back(joint_[i] + "/" + hardware_interface::HW_IF_VELOCITY);
             command_interface_config.names.push_back(joint_[i] + "/" + hardware_interface::HW_IF_EFFORT);
             command_interface_config.names.push_back(joint_[i] + "/" + hardware_interface::HW_IF_KP_SCALE);
-            command_interface_config.names.push_back(joint_[i] + "/" + hardware_interface::HW_IF_KD_SCALE);
-            // std::string mystring = joint_[i] + "/" + hardware_interface::HW_IF_POSITION;
-            // RCLCPP_INFO(get_node()->get_logger(),"Setting %s", mystring.c_str());
+            command_interface_config.names.push_back(joint_[i] + "/" + hardware_interface::HW_IF_KD_SCALE);;
         }
         RCLCPP_INFO(get_node()->get_logger(),"CONFIGURE COMMAND INTERFACES OK");
         return command_interface_config;
