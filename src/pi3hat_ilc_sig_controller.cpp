@@ -38,7 +38,7 @@ namespace pi3hat_ilc_sig_controller
                 auto_declare<double>("Ki", 0.01);
                 auto_declare<int>("N",100);
                 auto_declare<int>("N_init",300);
-                auto_declare<int>("Task_rep", 4);
+                auto_declare<int>("Task_rep", 1);
         }
          catch(const std::exception & e)
         {
@@ -129,10 +129,10 @@ namespace pi3hat_ilc_sig_controller
         
 
         // Assuming to resampling always at 1kHz
-        N_ = (int) (T_task_/period_);
-        N_homing_ = (int) (T_homing_/period_);
-        N_rest_ = (int) (T_rest_/period_);
-        N_homing_rest_ = (int) (T_homing_rest_/period_);
+        N_ = (int16_t) (T_task_/period_);
+        N_homing_ = (int16_t) (T_homing_/period_);
+        N_rest_ = (int16_t) (T_rest_/period_);
+        N_homing_rest_ = (int16_t) (T_homing_rest_/period_);
         
         if(N_ <= 0  || period_ <= 0) 
         {
@@ -190,8 +190,8 @@ namespace pi3hat_ilc_sig_controller
         time_hom_ = 0.0;
         
 
-        q_homing_vect_.resize(JNT_NUM*3*(int)(T_homing_/period_), 0.1);
-        q_opt_vect_.resize(JNT_NUM*3*(int)(T_task_/period_), 0.1);
+        q_homing_vect_.resize(JNT_NUM*3*(int16_t)(T_homing_/period_), 0.0);
+        q_opt_vect_.resize(JNT_NUM*3*(int16_t)(T_task_/period_), 0.0);
         
         if(!this->read_file())
           return CallbackReturn::ERROR;
@@ -335,7 +335,7 @@ namespace pi3hat_ilc_sig_controller
       // RCLCPP_INFO(get_node()->get_logger(),"time has value %f",time_);
 
 
-      if (time_ < T_homing_+ Task_rep_ * (T_task_ + T_rest_)){
+      if (time_ < (T_homing_ + T_homing_rest_) + Task_rep_ * (T_task_ + T_rest_) + d_s){
 
         // Extract measure after previus iteration
         for(uint j = 0;j<JNT_NUM;j++)
@@ -391,16 +391,17 @@ namespace pi3hat_ilc_sig_controller
                 }
                 else {                     // task execution
                   jnt_err_.resize(JNT_NUM, 0.0);         
-                  // ILC_FF_torque_update(index_rep_ - 1, take_off_pos_, take_off_vel_); // If this line cumment the ilc_update in the if
+                  ILC_FF_torque_update(index_rep_ - 1, take_off_pos_, take_off_vel_); // If this line cumment the ilc_update in the if
                   reference_extraction(index_rep_, jnt_pos, jnt_vel, jnt_tor);
                   index_rep_ += 1;                  
                 }
-                //RCLCPP_INFO(get_node()->get_logger(),"index value is %d", index_);
+                // RCLCPP_INFO(get_node()->get_logger(),"time value is %f", time_);
               }
               else {
                 state_ = Controller_State::ENDED;
                 reference_extraction(0, jnt_pos, jnt_vel, jnt_tor);
-                RCLCPP_INFO(get_node()->get_logger(),"index value is %d", index_);
+                // RCLCPP_INFO(get_node()->get_logger(),"index value is %d", index_);
+                // RCLCPP_INFO(get_node()->get_logger(),"Task done, setting controller state ENDED. Time is %f", time_);
               }
               break;
           case Controller_State::ENDED:
@@ -483,8 +484,8 @@ namespace pi3hat_ilc_sig_controller
           if (std::isnan(jnt_tor[j]))
           {
             command_interfaces_[5*j+2].set_value(0);
-            RCLCPP_INFO(get_node()->get_logger(),"SHIT AT j = %d",j);
-            RCLCPP_INFO(get_node()->get_logger(),"EFF = %f",jnt_tor[j]);
+            // RCLCPP_INFO(get_node()->get_logger(),"SHIT AT j = %d",j);
+            // RCLCPP_INFO(get_node()->get_logger(),"EFF = %f",jnt_tor[j]);
           }
           else
           {
@@ -503,11 +504,13 @@ namespace pi3hat_ilc_sig_controller
         }
         
         //Stream command data on topics
-        act_out_.set__velocity(zeros);
-        act_out_.set__effort(zeros);
+        act_out_.set__position(jnt_pos);
+        act_out_.set__velocity(jnt_vel);
+        act_out_.set__effort(jnt_tor);
         act_out_.header.set__stamp(time);
           
         pub_->publish(act_out_);
+        // RCLCPP_INFO(get_node()->get_logger(),"Exiting ILC Controller");
         return controller_interface::return_type::OK;
       }
     };

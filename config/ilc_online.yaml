@@ -1,0 +1,97 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 500 # hz tutto
+    state_broadcaster:
+      type: pi3hat_state_broadcaster/Pi3Hat_State_Broadcaster # stampa roba su topic
+    joint_controller:
+      type: pi3hat_joint_group_controller/Pi3Hat_Joint_Group_Controller # prende messaggi da topic
+    OM_controller:
+      type: pi3hat_vel_controller/Pi3Hat_Vel_Controller
+    IMU_Broadcaster:
+      type: imu_sensor_broadcaster/IMUSensorBroadcaster
+    ilc_sig_controller:
+      type: pi3hat_ilc_sig_controller/Pi3Hat_Ilc_Sig_Controller # prende valori giunti da csv (task.csv e init.csv)
+ 
+state_broadcaster:
+  ros__parameters:
+    joints:
+      - "LF_HFE"
+      - "LF_KFE"
+      - "LH_HFE"
+      - "LH_KFE"
+      - "RF_HFE"
+      - "RF_KFE"
+      - "RH_HFE"
+      - "RH_KFE"
+      # - "LF_WHEEL"
+      # - "LH_WHEEL"
+      # - "RF_WHEEL"
+      # - "RH_WHEEL"
+    second_encoders:
+      - "LF_HFE"
+      - "LF_KFE"
+      - "LH_HFE"
+      - "LH_KFE"
+      - "RF_HFE"
+      - "RF_KFE"
+      - "RH_HFE"
+      - "RH_KFE"
+    
+    performance_index: true
+
+IMU_Broadcaster:
+  ros__parameters:
+    sensor_name: "IMU"
+    frame_id: "IMU_NAV"
+
+joint_controller:
+  ros__parameters:
+    joints:
+      - "LF_HFE"
+      - "LH_HFE"
+      - "RF_HFE"
+      - "RH_HFE"
+      - "LF_KFE"
+      - "LH_KFE"
+      - "RF_KFE"
+      - "RH_KFE"
+ 
+ 
+    
+OM_controller:
+  ros__parameters:
+    homing_duration: 5.0
+    input_frequency: 100
+    mecanum_angle: 135.0
+    init_x_displacement: 0.0 #[m]
+    init_height: -0.30
+    max_height: -0.5
+    min_height: -0.10
+    wheel_rad: 0.05  #0.028 for trucks, 0.05 for omniwheels
+    feet_type: 2   
+    
+ilc_sig_controller:
+   ros__parameters:
+      period: 0.002    # control period [s] (IMPORTANTISSIMOOOOOOO!!!!!!!)
+      file_homing: "/home/mulsbc/mulinex_ws/src/Ilc_sig_ROS2_controller/csv_task/ddp/init.csv"  # joints trajectories for homing. It must be a single column vectors [..., pos[JOINTS_NUM][t],vel[JOINTS_NUM][t],tor[JOINTS_NUM][t],pos[JOINTS_NUM][t+1],vel[JOINTS_NUM][t+1],tor[JOINTS_NUM][t+1], ...]  
+      file_name: "/home/mulsbc/mulinex_ws/src/Ilc_sig_ROS2_controller/csv_task/ddp/task.csv"    # joints trajectories for task. It must be a single column vectors [..., pos[JOINTS_NUM][t],vel[JOINTS_NUM][t],tor[JOINTS_NUM][t],pos[JOINTS_NUM][t+1],vel[JOINTS_NUM][t+1],tor[JOINTS_NUM][t+1], ...]	
+      T_init: 3.0      # time duration of the homing phase       
+      T_init_rest: 5.0 # time duration of the rest phase after homing
+      T_task: 0.65     # time duration of the task
+      T_rest: 1.0      # time duration of the rest phase between task repetitions
+      Task_rep: 1      # number of task repetitions
+      ILC_kp: 0.5      # proportional gain of the ILC controller
+      ILC_kd: 0.075    # derivative gain of the ILC controller
+      KI: 0.0          # integral gain for PD controller during home and rest phases 
+      topic_name: "ILC_ref" # topic name where reference signals are published for bag recording
+      use_sim_time: False
+      joints:
+      - "LF_HFE"
+      - "LF_KFE"
+      - "LH_HFE"
+      - "LH_KFE"
+      - "RF_HFE"
+      - "RF_KFE"
+      - "RH_HFE"
+      - "RH_KFE"
+
